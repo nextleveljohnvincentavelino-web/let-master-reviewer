@@ -9,9 +9,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
   <style>
-    :root{--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#f8fafc;--muted:#a8b4c7;--green:#10b981;--mint:#a7f3d0}
+    :root{--bg:#0f172a;--surface:#1e293b;--line:#334155;--text:#f8fafc;--muted:#a8b4c7;--green:#10b981;--mint:#a7f3d0;--blue:#3b82f6}
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif}
+    
+    /* Auth Styles */
     .wrap{width:min(440px,90%);margin:80px auto}
     .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:30px}
     h1{font-size:1.6rem;margin-top:0}
@@ -22,11 +24,19 @@
     .toggle-box{margin-top:16px;font-size:0.85rem;color:var(--muted);text-align:center}
     .toggle-btn{color:var(--mint);font-weight:bold;cursor:pointer;text-decoration:underline;margin-left:4px}
     .error{color:#ef4444;font-size:0.8rem;margin-bottom:10px}
-    #app-content{display:none;padding:40px;text-align:center}
+    
+    /* App Interface Styles */
+    #app-content{display:none;padding:20px;max-width:900px;margin:0 auto}
+    .header-bar{display:flex;justify-content:space-between;align-items:center;background:var(--surface);padding:16px 24px;border-radius:12px;border:1px solid var(--line);margin-bottom:20px}
+    .user-info{font-size:0.9rem;color:var(--muted)}
+    .user-info b{color:var(--mint)}
+    .btn-logout{background:#ef4444;color:#fff;border:0;border-radius:8px;padding:8px 16px;font-weight:600;cursor:pointer}
+    .main-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:20px}
   </style>
 </head>
 <body>
 
+<!-- Authentication Screen -->
 <div class="wrap" id="auth-wrap">
   <div class="card" id="auth-card">
     <h1 id="auth-title">Sign In</h1>
@@ -49,10 +59,23 @@
   </div>
 </div>
 
+<!-- Main Application Content (Visible when Logged In) -->
 <div id="app-content">
-  <h1>Welcome to LET Master Reviewer</h1>
-  <p id="user-display-email"></p>
-  <button class="btn" style="width:200px;margin:20px auto;" id="logout-btn">Sign Out</button>
+  <div class="header-bar">
+    <div>
+      <h2 style="margin:0;font-size:1.2rem;">LET Master Reviewer</h2>
+      <div class="user-info">Logged in as: <b id="user-display-email">--</b></div>
+    </div>
+    <button class="btn-logout" id="logout-btn">Sign Out</button>
+  </div>
+
+  <div class="main-card">
+    <h3>Practice Portal</h3>
+    <p style="color:var(--muted)">Your live progress and score are automatically synced across all your signed-in devices via Firebase Cloud Firestore.</p>
+    <div id="progress-status" style="margin-top:15px;padding:12px;background:#0f1a2a;border-radius:8px;font-size:0.9rem;">
+      Syncing data with cloud...
+    </div>
+  </div>
 </div>
 
 <script>
@@ -70,6 +93,8 @@
   const db = firebase.firestore();
 
   let isSignUp = false;
+  let currentUser = null;
+
   const authTitle = document.getElementById('auth-title');
   const authBtn = document.getElementById('auth-btn');
   const toggleAuth = document.getElementById('toggle-auth');
@@ -79,8 +104,8 @@
   const appContent = document.getElementById('app-content');
   const userDisplayEmail = document.getElementById('user-display-email');
   const logoutBtn = document.getElementById('logout-btn');
+  const progressStatus = document.getElementById('progress-status');
 
-  // Toggle between Sign In and Sign Up
   toggleAuth.addEventListener('click', () => {
     isSignUp = !isSignUp;
     authTitle.innerText = isSignUp ? 'Create Account' : 'Sign In';
@@ -90,7 +115,6 @@
     authError.innerText = '';
   });
 
-  // Handle Form Submission
   document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;
@@ -103,7 +127,7 @@
         await db.collection('users').doc(userCred.user.uid).set({
           email: email,
           createdAt: new Date(),
-          progress: {}
+          progress: { score: 0, itemsAnswered: 0 }
         });
       } else {
         await auth.signInWithEmailAndPassword(email, password);
@@ -113,19 +137,30 @@
     }
   });
 
-  // Listen for Authentication State Changes
+  // Listen for Authentication State & Real-Time Data Sync
   auth.onAuthStateChanged((user) => {
     if (user) {
+      currentUser = user;
       authWrap.style.display = 'none';
       appContent.style.display = 'block';
-      userDisplayEmail.innerText = `Logged in as: ${user.email}`;
+      userDisplayEmail.innerText = user.email;
+
+      // Real-time Firestore listener for cross-device sync
+      db.collection('users').doc(user.uid).onSnapshot((doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          const progress = data.progress || { score: 0, itemsAnswered: 0 };
+          progressStatus.innerHTML = `☁️ <b>Cloud Sync Active:</b> ${progress.itemsAnswered} items completed | Score: ${progress.score}`;
+        }
+      });
+
     } else {
+      currentUser = null;
       authWrap.style.display = 'block';
       appContent.style.display = 'none';
     }
   });
 
-  // Handle Sign Out
   logoutBtn.addEventListener('click', () => {
     auth.signOut();
   });
