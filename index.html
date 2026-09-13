@@ -19,14 +19,15 @@
     label{font-size:0.8rem;color:var(--muted);font-weight:600}
     input{width:100%;border:1px solid var(--line);background:#0f1a2a;color:var(--text);border-radius:10px;padding:12px}
     .btn{width:100%;border:0;border-radius:10px;padding:12px;font-weight:700;background:var(--green);color:#06261b;cursor:pointer;margin-top:8px}
-    .toggle{margin-top:16px;font-size:0.85rem;color:var(--muted);text-align:center;cursor:pointer}
-    .toggle b{color:var(--mint)}
+    .toggle-box{margin-top:16px;font-size:0.85rem;color:var(--muted);text-align:center}
+    .toggle-btn{color:var(--mint);font-weight:bold;cursor:pointer;text-decoration:underline;margin-left:4px}
     .error{color:#ef4444;font-size:0.8rem;margin-bottom:10px}
+    #app-content{display:none;padding:40px;text-align:center}
   </style>
 </head>
 <body>
 
-<div class="wrap">
+<div class="wrap" id="auth-wrap">
   <div class="card" id="auth-card">
     <h1 id="auth-title">Sign In</h1>
     <div id="auth-error" class="error"></div>
@@ -41,21 +42,27 @@
       </div>
       <button type="submit" class="btn" id="auth-btn">Sign In</button>
     </form>
-    <div class="toggle" id="toggle-auth">
-      Don't have an account? <b id="toggle-label">Sign Up</b>
+    <div class="toggle-box">
+      <span id="toggle-text">Don't have an account?</span>
+      <span class="toggle-btn" id="toggle-auth">Sign Up</span>
     </div>
   </div>
 </div>
 
+<div id="app-content">
+  <h1>Welcome to LET Master Reviewer</h1>
+  <p id="user-display-email"></p>
+  <button class="btn" style="width:200px;margin:20px auto;" id="logout-btn">Sign Out</button>
+</div>
+
 <script>
-  // YOUR FIREBASE CONFIGURATION
   const firebaseConfig = {
     apiKey: "AIzaSyDl2e4OOfTwOdcAPVIG1hbIMaEuEhrgeLE",
-    authDomain: "let-master-reviewer-97899.firebaseapp.com",
-    projectId: "let-master-reviewer-97899",
-    storageBucket: "let-master-reviewer-97899.firebasestorage.app",
-    messagingSenderId: "410136672291",
-    appId: ""1:410136672291:web:5eea89bb87b9d4f9745996"
+    authDomain: "let-master-reviewer.firebaseapp.com",
+    projectId: "let-master-reviewer",
+    storageBucket: "let-master-reviewer.firebasestorage.app",
+    messagingSenderId: "994646702581",
+    appId: "1:994646702581:web:2a356aaedaaec6f0c85c2d"
   };
 
   firebase.initializeApp(firebaseConfig);
@@ -66,17 +73,24 @@
   const authTitle = document.getElementById('auth-title');
   const authBtn = document.getElementById('auth-btn');
   const toggleAuth = document.getElementById('toggle-auth');
-  const toggleLabel = document.getElementById('toggle-label');
+  const toggleText = document.getElementById('toggle-text');
   const authError = document.getElementById('auth-error');
+  const authWrap = document.getElementById('auth-wrap');
+  const appContent = document.getElementById('app-content');
+  const userDisplayEmail = document.getElementById('user-display-email');
+  const logoutBtn = document.getElementById('logout-btn');
 
+  // Toggle between Sign In and Sign Up
   toggleAuth.addEventListener('click', () => {
     isSignUp = !isSignUp;
     authTitle.innerText = isSignUp ? 'Create Account' : 'Sign In';
     authBtn.innerText = isSignUp ? 'Sign Up' : 'Sign In';
-    toggleLabel.innerText = isSignUp ? 'Sign In' : 'Sign Up';
+    toggleText.innerText = isSignUp ? 'Already have an account?' : "Don't have an account?";
+    toggleAuth.innerText = isSignUp ? 'Sign In' : 'Sign Up';
     authError.innerText = '';
   });
 
+  // Handle Form Submission
   document.getElementById('auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value;
@@ -94,10 +108,26 @@
       } else {
         await auth.signInWithEmailAndPassword(email, password);
       }
-      alert('Logged in successfully!');
     } catch (err) {
       authError.innerText = err.message;
     }
+  });
+
+  // Listen for Authentication State Changes
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      authWrap.style.display = 'none';
+      appContent.style.display = 'block';
+      userDisplayEmail.innerText = `Logged in as: ${user.email}`;
+    } else {
+      authWrap.style.display = 'block';
+      appContent.style.display = 'none';
+    }
+  });
+
+  // Handle Sign Out
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
   });
 </script>
 
